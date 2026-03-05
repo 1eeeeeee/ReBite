@@ -1,0 +1,17 @@
+# --- 前端 (React Native) ---
+front/ReBite/node_modules/
+front/ReBite/.expo/
+front/ReBite/dist/
+front/ReBite/npm-debug.log*
+
+# --- 後端 (PHP) ---
+# 排除敏感的資料庫設定檔
+server/db_config.php
+
+# 排除未來可能產生的上傳圖片資料夾
+server/uploads/
+
+# --- 系統雜務 ---
+.DS_Store
+Thumbs.db
+.vscode/
