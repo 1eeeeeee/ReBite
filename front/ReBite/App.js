@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, View, Text, TouchableOpacity, 
-  TextInput, SafeAreaView, KeyboardAvoidingView, Platform, Alert 
+  TextInput, SafeAreaView, KeyboardAvoidingView, Platform, Alert, Image, Dimensions 
 } from 'react-native';
 import UserView from './src/UserView';
 import MerchantView from './src/MerchantView';
 import AdminView from './src/AdminView';
+import { Video, ResizeMode } from 'expo-av'; // 導入影片組件
 
-// ⚠️ 重要：請將此處替換為你電腦的 IPv4 地址 (例如 192.168.1.100)
-// 在終端機輸入 ipconfig 即可查到
+const { width, height } = Dimensions.get('window');
 const BASE_URL = 'http://10.0.0.117/ReBite/server';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true); // 控制啟動動畫狀態
   const [role, setRole] = useState('visitor'); 
   const [isLogin, setIsLogin] = useState(true); 
   const [email, setEmail] = useState('');
@@ -21,9 +22,14 @@ export default function App() {
   const validateEmail = (text) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
   const isPasswordValid = (pass) => /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,16}$/.test(pass);
 
-  // 🛰️ 核心連線函式
+  // 📹 處理影片播放狀態
+  const onPlaybackStatusUpdate = (status) => {
+    if (status.didJustFinish) {
+      setShowSplash(false); // 影片播完後關閉 Splash 畫面
+    }
+  };
+
   const handleAuth = async () => {
-    // 基礎格式驗證
     if (!email || !password) return Alert.alert("提醒", "請填寫完整資訊");
     if (!validateEmail(email)) return Alert.alert("格式錯誤", "電子郵件格式不正確");
     if (!isPasswordValid(password)) return Alert.alert("格式錯誤", "密碼需為 8-16 位英數字組合");
@@ -37,15 +43,13 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
       const result = await response.json();
 
       if (result.status === "success") {
         if (isLogin) {
-          // 登入成功：依照資料庫回傳的 role 切換介面
+          // 🔑 核心邏輯：依照資料庫回傳的 role 切換介面
           setRole(result.role); 
         } else {
-          // 註冊成功：彈出提示並跳回登入
           Alert.alert("註冊成功", "帳號已建立，請重新登入", [
             { text: "確定", onPress: () => { setIsLogin(true); setPassword(''); setConfirmPassword(''); } }
           ]);
@@ -55,16 +59,8 @@ export default function App() {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("連線錯誤", "無法連接伺服器。請檢查：\n1. 電腦 IP 是否正確\n2. 手機與電腦是否連同一個 Wi-Fi\n3. XAMPP 是否啟動");
+      Alert.alert("連線錯誤", "無法連線至伺服器");
     }
-  };
-
-  const showDevMenu = () => {
-    Alert.alert("開發者選單", "切換終端測試:", [
-      { text: "店家端", onPress: () => setRole('merchant') },
-      { text: "管理端", onPress: () => setRole('admin') },
-      { text: "取消", style: "cancel" }
-    ]);
   };
 
   const renderContent = () => {
@@ -74,12 +70,17 @@ export default function App() {
 
     return (
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.loginContainer}>
+        {/* 修改這裡的結構：Logo 在上，文字在下且同一行 */}
         <View style={styles.logoSection}>
-          <TouchableOpacity onLongPress={showDevMenu} activeOpacity={0.8}>
-            <View style={styles.logoIconBg}><Text style={{fontSize: 30}}>🍃</Text></View>
-          </TouchableOpacity>
-          <Text style={styles.logoTitle}>ReBite</Text>
-          <Text style={styles.logoSubtitle}>每一口都在拯救地球</Text>
+          <View style={styles.logoIconBg}>
+            <Image source={require('./assets/images/logo.png')} style={styles.logoImage}/>
+          </View>
+          
+          {/* 使用內聯樣式強制文字在同一行，不更動底下的 Styles */}
+          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+            <Text style={styles.logoTitle}>ReBite</Text>
+            <Text style={styles.logoSubtitle}>  每一口都在拯救地球</Text>
+          </View>
         </View>
 
         <View style={styles.loginCard}>
@@ -122,13 +123,36 @@ export default function App() {
     );
   };
 
-  return <SafeAreaView style={{flex: 1, backgroundColor: '#F2EFED'}}>{renderContent()}</SafeAreaView>;
+  if (showSplash) {
+    return (
+      <View style={styles.splashContainer}>
+        <Video
+          source={require('./assets/images/logo.mp4')}
+          style={{ width: width, height: height }}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay
+          isLooping={false}
+          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+          onError={(e) => {
+            console.log("Video Error:", e);
+            setShowSplash(false);
+          }}
+        />
+      </View>
+    );
+  }
+
+  return <SafeAreaView style={{flex: 1, backgroundColor: '#FCF8EC'}}>{renderContent()}</SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
+  // 啟動影片樣式
+  splashContainer: { flex: 1, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+  fullScreenVideo: { width: width, height: height },
+
+  // 登入頁面樣式
   loginContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 25 },
   logoSection: { alignItems: 'center', marginBottom: 35 },
-  logoIconBg: { width: 65, height: 65, backgroundColor: '#3D5A45', borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
   logoTitle: { fontSize: 34, fontWeight: 'bold', color: '#3D5A45', letterSpacing: 1 },
   logoSubtitle: { fontSize: 14, color: '#888', marginTop: 5 },
   loginCard: { backgroundColor: '#FFF', width: '100%', borderRadius: 30, padding: 25, elevation: 5 },
@@ -145,4 +169,19 @@ const styles = StyleSheet.create({
   validHint: { color: '#28a745' },
   mainBtn: { backgroundColor: '#3D5A45', height: 55, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
   mainBtnText: { color: '#FFF', fontSize: 17, fontWeight: 'bold' },
+  
+  logoIconBg: { 
+    width: 120, 
+    height: 75, 
+    borderRadius: 20, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 15,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
 });
