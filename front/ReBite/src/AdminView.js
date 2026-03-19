@@ -1,190 +1,174 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, View, Text, ScrollView, 
-  TouchableOpacity, SafeAreaView, TextInput, Alert 
+  TouchableOpacity, Dimensions, Platform 
 } from 'react-native';
 
+const { width } = Dimensions.get('window');
+
 const AdminView = ({ onLogout }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // 控管管理員是否已授權
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // 檢查是否為 Web 環境且寬度足夠
+  const isWebView = Platform.OS === 'web' && width > 768;
 
-  // 🛡️ 管理員核身邏輯
-  const handleAdminLogin = async () => {
-    if (!email || !password) return Alert.alert("錯誤", "請輸入管理員憑證");
-
-    try {
-      const response = await fetch('http://10.0.0.117/ReBite/server/login.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const result = await response.json();
-
-      if (result.status === "success") {
-        if (result.role === 'admin') {
-          setIsLoggedIn(true);
-        } else {
-          Alert.alert("存取拒絕", "此帳號不具備系統管理員權限");
-        }
-      } else {
-        Alert.alert("失敗", "帳號或密碼錯誤");
-      }
-    } catch (error) {
-      Alert.alert("連線失敗", "無法連接至管理伺服器");
-    }
-  };
-
-  // ---------------------------------------------------------
-  // 1. 管理員授權畫面 (未登入時顯示)
-  // ---------------------------------------------------------
-  if (!isLoggedIn) {
+  if (!isWebView && Platform.OS !== 'web') {
     return (
-      <SafeAreaView style={styles.adminLockBg}>
-        <View style={styles.lockCard}>
-          <Text style={styles.lockIcon}>🛡️</Text>
-          <Text style={styles.adminTitle}>ReBite Admin</Text>
-          <Text style={styles.adminSub}>系統管理中心 (開發者專用)</Text>
-
-          <TextInput 
-            style={styles.adminInput} 
-            placeholder="管理員信箱" 
-            placeholderTextColor="#666"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-          />
-          <TextInput 
-            style={styles.adminInput} 
-            placeholder="安全授權密碼" 
-            placeholderTextColor="#666"
-            secureTextEntry 
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          <TouchableOpacity style={styles.authBtn} onPress={handleAdminLogin}>
-            <Text style={styles.authBtnText}>驗證身份</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={onLogout} style={{marginTop: 30}}>
-            <Text style={{color: '#888', textDecorationLine: 'underline'}}>退出管理模式</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <View style={styles.mobileWarning}>
+        <Text style={styles.warningIcon}>💻</Text>
+        <Text style={styles.warningTitle}>管理系統僅限 Web 端</Text>
+        <Text style={styles.warningSub}>為了確保數據安全與操作體驗，請使用電腦瀏覽器開啟後台管理系統。</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={onLogout}>
+          <Text style={styles.backBtnText}>返回登入頁</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
-  // ---------------------------------------------------------
-  // 2. 原始管理後台介面 (登入成功後顯示)
-  // ---------------------------------------------------------
-  const stats = [
-    { label: '合作店家', value: '128', unit: '家' },
-    { label: '註冊用戶', value: '1,540', unit: '人' },
-    { label: '減碳總量', value: '342.5', unit: 'kg' },
-  ];
-
-  const shops = [
-    { name: 'Green Bakery', location: '台北市信義區', joined: '2025/12/01' },
-    { name: 'Pure Food', location: '台北市大安區', joined: '2025/12/15' },
-    { name: '日和食堂', location: '新北市板橋區', joined: '2026/01/10' },
-  ];
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.logoRow}>
+    <View style={styles.mainContainer}>
+      {/* --- 左側固定導覽欄 --- */}
+      <View style={styles.sidebar}>
+        <View style={styles.logoSection}>
           <Text style={styles.logoIcon}>🍃</Text>
           <Text style={styles.logoText}>ReBite Admin</Text>
         </View>
+
+        <View style={styles.navGroup}>
+          <TouchableOpacity 
+            style={[styles.navItem, activeTab === 'dashboard' && styles.navItemActive]} 
+            onPress={() => setActiveTab('dashboard')}
+          >
+            <Text style={[styles.navText, activeTab === 'dashboard' && styles.navTextActive]}>📊 數據總覽</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.navItem, activeTab === 'merchants' && styles.navItemActive]} 
+            onPress={() => setActiveTab('merchants')}
+          >
+            <Text style={[styles.navText, activeTab === 'merchants' && styles.navTextActive]}>🏪 商家管理</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.navItem, activeTab === 'users' && styles.navItemActive]} 
+            onPress={() => setActiveTab('users')}
+          >
+            <Text style={[styles.navText, activeTab === 'users' && styles.navTextActive]}>👥 會員清單</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-          <Text style={styles.logoutText}>系統登出</Text>
+          <Text style={styles.logoutBtnText}>🚪 安全登出</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.container}>
-        <Text style={styles.welcomeText}>⚡ 營運數據總覽</Text>
+      {/* --- 右側內容區 --- */}
+      <View style={styles.contentArea}>
+        <View style={styles.topHeader}>
+          <Text style={styles.topHeaderTitle}>
+            {activeTab === 'dashboard' ? '系統數據即時監控' : '管理面板'}
+          </Text>
+          <Text style={styles.adminName}>管理員：System_Admin</Text>
+        </View>
 
-        <View style={styles.statsGrid}>
-          {stats.map((item, index) => (
-            <View key={index} style={styles.statCard}>
-              <Text style={styles.statLabel}>{item.label}</Text>
-              <View style={styles.valueRow}>
-                <Text style={styles.statValue}>{item.value}</Text>
-                <Text style={styles.statUnit}>{item.unit}</Text>
+        <ScrollView style={styles.mainScroll} contentContainerStyle={styles.scrollContent}>
+          
+          {/* 數據卡片列 */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>累計減碳總量</Text>
+              <Text style={styles.statValue}>4,528 <Text style={styles.unit}>kg</Text></Text>
+              <Text style={styles.statTrend}>↑ 12.5% 本月增長</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>合作商家總數</Text>
+              <Text style={styles.statValue}>86 <Text style={styles.unit}>家</Text></Text>
+              <Text style={styles.statTrend}>↑ 3 家 新進駐</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>拯救剩食份數</Text>
+              <Text style={styles.statValue}>12,042 <Text style={styles.unit}>份</Text></Text>
+              <Text style={styles.statTrend}>平均每日 150+ 份</Text>
+            </View>
+          </View>
+
+          {/* 模擬圖表區 */}
+          <View style={styles.chartSection}>
+            <View style={styles.chartPlaceholder}>
+              <Text style={styles.chartTitle}>📈 每日減碳趨勢 (模擬圖表區)</Text>
+              <View style={styles.mockGraph}>
+                <View style={[styles.bar, {height: '40%'}]} />
+                <View style={[styles.bar, {height: '60%'}]} />
+                <View style={[styles.bar, {height: '50%'}]} />
+                <View style={[styles.bar, {height: '80%'}]} />
+                <View style={[styles.bar, {height: '70%'}]} />
+                <View style={[styles.bar, {height: '90%'}]} />
               </View>
             </View>
-          ))}
-        </View>
 
-        <View style={styles.chartSection}>
-          <Text style={styles.sectionTitleChart}>📈 月度減碳趨勢</Text>
-          <View style={styles.chartPlaceholder}>
-            {[40, 60, 45, 90, 75, 95].map((h, i) => (
-              <View key={i} style={[styles.bar, { height: h }]} />
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.listSection}>
-          <View style={styles.listHeader}>
-            <Text style={styles.sectionTitleDark}>🏪 合作店家管理</Text>
-            <TouchableOpacity><Text style={styles.moreText}>查看全部 ❯</Text></TouchableOpacity>
-          </View>
-          {shops.map((shop, index) => (
-            <View key={index} style={styles.listItem}>
-              <View>
-                <Text style={styles.shopName}>{shop.name}</Text>
-                <Text style={styles.shopInfo}>{shop.location}</Text>
-              </View>
-              <Text style={styles.joinDate}>{shop.joined}</Text>
+            <View style={styles.recentActivity}>
+              <Text style={styles.chartTitle}>🔔 最近系統動態</Text>
+              <Text style={styles.activityLog}>• [商家] Green Bakery 上架了 15 份惜食品</Text>
+              <Text style={styles.activityLog}>• [會員] 林小姐 成功核銷了 歐式麵包</Text>
+              <Text style={styles.activityLog}>• [系統] 成功發送週報至 1,200 名會員</Text>
             </View>
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          </View>
+
+        </ScrollView>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  // --- 管理員鎖定畫面樣式 ---
-  adminLockBg: { flex: 1, backgroundColor: '#121212', justifyContent: 'center', alignItems: 'center' },
-  lockCard: { width: '85%', alignItems: 'center' },
-  lockIcon: { fontSize: 60, marginBottom: 20 },
-  adminTitle: { fontSize: 26, fontWeight: 'bold', color: '#FFF', letterSpacing: 1 },
-  adminSub: { fontSize: 14, color: '#555', marginBottom: 40, marginTop: 5 },
-  adminInput: { backgroundColor: '#1E1E1E', width: '100%', height: 60, borderRadius: 15, paddingHorizontal: 20, marginBottom: 15, color: '#FFF', fontSize: 16, borderWidth: 1, borderColor: '#333' },
-  authBtn: { backgroundColor: '#3D5A45', width: '100%', height: 60, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#3D5A45', shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
-  authBtnText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+  mainContainer: { flex: 1, flexDirection: 'row', backgroundColor: '#F0F2F5' },
+  
+  // 側邊欄
+  sidebar: { width: 260, backgroundColor: '#2A332C', padding: 25, justifyContent: 'space-between' },
+  logoSection: { flexDirection: 'row', alignItems: 'center', marginBottom: 40 },
+  logoIcon: { fontSize: 28, marginRight: 10 },
+  logoText: { color: '#FFF', fontSize: 22, fontWeight: 'bold' },
+  navGroup: { flex: 1 },
+  navItem: { padding: 15, borderRadius: 12, marginBottom: 10 },
+  navItemActive: { backgroundColor: '#3D5A45' },
+  navText: { color: '#A9C0B0', fontSize: 16 },
+  navTextActive: { color: '#FFF', fontWeight: 'bold' },
+  logoutBtn: { padding: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', marginTop: 20 },
+  logoutBtnText: { color: '#FF6B6B', textAlign: 'center', fontWeight: 'bold' },
 
-  // --- 原始樣式修正與保持 ---
-  safeArea: { flex: 1, backgroundColor: '#F9F9F4' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, backgroundColor: '#FFF', alignItems: 'center' },
-  logoRow: { flexDirection: 'row', alignItems: 'center' },
-  logoIcon: { fontSize: 24, marginRight: 8 },
-  logoText: { fontSize: 20, fontWeight: 'bold', color: '#3D5A45' },
-  logoutBtn: { backgroundColor: '#F0F2F0', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
-  logoutText: { fontSize: 12, color: '#666', fontWeight: 'bold' },
-  container: { padding: 25 },
-  welcomeText: { fontSize: 24, fontWeight: 'bold', color: '#3D5A45', marginBottom: 20 },
-  statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-  statCard: { backgroundColor: '#FFF', width: '31%', padding: 15, borderRadius: 20, elevation: 2, alignItems: 'center' },
-  statLabel: { fontSize: 12, color: '#999', marginBottom: 5 },
-  valueRow: { flexDirection: 'row', alignItems: 'baseline' },
-  statValue: { fontSize: 20, fontWeight: 'bold', color: '#3D5A45' },
-  statUnit: { fontSize: 10, color: '#3D5A45', marginLeft: 2 },
-  chartSection: { backgroundColor: '#3D5A45', borderRadius: 25, padding: 20, marginBottom: 25 },
-  sectionTitleChart: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#FFF' },
-  chartPlaceholder: { height: 120, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', paddingBottom: 10 },
-  bar: { width: 30, backgroundColor: '#A9C0B0', borderRadius: 5 },
-  listSection: { backgroundColor: '#FFF', borderRadius: 25, padding: 20 },
-  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  sectionTitleDark: { fontSize: 18, fontWeight: 'bold', color: '#3D5A45' },
-  moreText: { color: '#999', fontSize: 12 },
-  listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F0F2F0' },
-  shopName: { fontSize: 16, fontWeight: 'bold', color: '#3D5A45' },
-  shopInfo: { fontSize: 12, color: '#999', marginTop: 2 },
-  joinDate: { fontSize: 12, color: '#CCC' }
+  // 右側內容
+  contentArea: { flex: 1 },
+  topHeader: { height: 70, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 30, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  topHeaderTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  adminName: { color: '#888' },
+
+  mainScroll: { flex: 1 },
+  scrollContent: { padding: 30 },
+
+  // 數據卡片
+  statsRow: { flexDirection: 'row', gap: 20, marginBottom: 30 },
+  statCard: { flex: 1, backgroundColor: '#FFF', padding: 25, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  statLabel: { color: '#888', fontSize: 14, marginBottom: 10 },
+  statValue: { fontSize: 32, fontWeight: 'bold', color: '#3D5A45' },
+  unit: { fontSize: 16, color: '#AAA' },
+  statTrend: { color: '#28A745', fontSize: 12, marginTop: 10, fontWeight: 'bold' },
+
+  // 圖表區
+  chartSection: { flexDirection: 'row', gap: 20 },
+  chartPlaceholder: { flex: 2, backgroundColor: '#FFF', borderRadius: 20, padding: 25, height: 400 },
+  chartTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 20, color: '#333' },
+  mockGraph: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', paddingBottom: 20 },
+  bar: { width: 40, backgroundColor: '#3D5A45', borderRadius: 5, opacity: 0.7 },
+  recentActivity: { flex: 1, backgroundColor: '#FFF', borderRadius: 20, padding: 25 },
+  activityLog: { fontSize: 13, color: '#666', marginBottom: 15, lineHeight: 20 },
+
+  // 手機警告頁面
+  mobileWarning: { flex: 1, backgroundColor: '#FCF8EC', justifyContent: 'center', alignItems: 'center', padding: 40 },
+  warningIcon: { fontSize: 80, marginBottom: 20 },
+  warningTitle: { fontSize: 24, fontWeight: 'bold', color: '#3D5A45', marginBottom: 15 },
+  warningSub: { textAlign: 'center', color: '#888', lineHeight: 24, marginBottom: 30 },
+  backBtn: { backgroundColor: '#3D5A45', paddingHorizontal: 30, paddingVertical: 15, borderRadius: 15 },
+  backBtnText: { color: '#FFF', fontWeight: 'bold' }
 });
 
 export default AdminView;
